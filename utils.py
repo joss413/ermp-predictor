@@ -29,33 +29,29 @@ def load_models():
 def load_data():
     """Load program tiers and candidate data from Streamlit Secrets"""
     try:
-        # Check if running on Streamlit Cloud with secrets
         if 'data' in st.secrets:
             # Load from secrets
             candidates_str = st.secrets['data']['candidates_csv']
             program_tiers_str = st.secrets['data']['program_tiers_csv']
             ermp_str = st.secrets['data']['ermp_csv']
-            
+
+            # Fix: Remove any BOM or hidden characters
+            if ermp_str.startswith('\ufeff'):
+                ermp_str = ermp_str[1:]
+
+            # Fix: Ensure consistent line endings
+            ermp_str = ermp_str.replace('\r\n', '\n').replace('\r', '\n')
+
             # Convert strings to DataFrames
             candidates = pd.read_csv(io.StringIO(candidates_str))
             program_tiers = pd.read_csv(io.StringIO(program_tiers_str))
             df_original = pd.read_csv(io.StringIO(ermp_str))
-            
-            st.success("✅ Data loaded from Secrets")
-        else:
-            # Fallback to local files for development
-            st.warning("⚠️ No secrets found, loading local files...")
-            program_tiers = pd.read_csv('artifacts/program_tiers.csv')
-            candidates = pd.read_csv('artifacts/candidates_2025.csv')
-            df_original = pd.read_csv('ERMP.csv')
 
-        # Ensure proper sorting (highest to lowest)
-        candidates = candidates.sort_values('Score', ascending=False).reset_index(drop=True)
+            # Clean program names (remove any hidden spaces)
+            df_original['Program'] = df_original['Program'].str.strip()
+            df_original['University'] = df_original['University'].str.strip()
 
-        # Add rank column (1-based)
-        candidates['Correct_Rank'] = range(1, len(candidates) + 1)
-
-        return program_tiers, candidates, df_original
+            return program_tiers, candidates, df_original
 
     except Exception as e:
         st.error(f"Error loading data: {e}")
