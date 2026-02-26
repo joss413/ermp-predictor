@@ -201,47 +201,44 @@ def plot_historical_trend(program, university, df_original):
     try:
         import plotly.express as px
 
-        # Simple filter - no complex string operations
+        # Clean the input program name (remove any extra quotes or spaces)
+        program_clean = program.strip().replace('"', '')
+        university_clean = university.strip()
+
+        # Clean the dataframe program names (remove any hidden quotes)
+        df_original['Program_clean'] = df_original['Program'].astype(str).str.strip().str.replace('"', '')
+        df_original['University_clean'] = df_original['University'].astype(str).str.strip()
+
+        # Try to find matching data
         data = df_original[
-            (df_original['Program'] == program) &
-            (df_original['University'] == university)
+            (df_original['Program_clean'] == program_clean) &
+            (df_original['University_clean'] == university_clean)
             ]
 
-        # If no data, try with original data types
+        # If no match, try contains (for programs with commas)
         if data.empty:
-            # Convert to string and compare
+            program_base = program_clean.split(',')[0]
             data = df_original[
-                (df_original['Program'].astype(str) == str(program)) &
-                (df_original['University'].astype(str) == str(university))
+                df_original['Program_clean'].str.contains(program_base, na=False) &
+                (df_original['University_clean'] == university_clean)
                 ]
 
-        if not data.empty and len(data) > 0:
-            # Create the chart
-            fig = px.line(
-                data,
-                x='Year',
-                y='Min_Grade',
-                title=f'📈 {program} at {university}',
-                markers=True
-            )
-
-            # Update layout
+        if not data.empty:
+            fig = px.line(data, x='Year', y='Min_Grade',
+                          title=f'📈 {program} at {university}',
+                          markers=True)
             fig.update_layout(
-                xaxis=dict(tickmode='linear', tick0=2022, dtick=1),
                 yaxis_title='Minimum Grade',
-                height=350,
-                margin=dict(l=40, r=40, t=40, b=40)
+                xaxis_title='Year',
+                showlegend=False,
+                height=400
             )
-
             return fig
         else:
-            # Return None silently (no warning)
             return None
 
     except Exception as e:
-        # Silent fail
         return None
-
 # GET UNIQUE PROGRAMS AND UNIVERSITIES
 
 def get_programs_universities(df_original):
